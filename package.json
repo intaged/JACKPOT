@@ -1,0 +1,16 @@
+{
+  "name": "modern-website",
+  "version": "1.0.0",
+  "description": "A modern website with proper error prevention",
+  "main": "index.js",
+  "scripts": {
+    "start": "live-server",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "live-server": "^1.2.2",
+    "prettier": "^3.2.0"
+  }
+} 
