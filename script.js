@@ -11,8 +11,11 @@ class CoinTracker {
         this.subscribedPools = new Set();
         this.highRollersGrid = document.querySelector('.high-rollers-grid');
         this.topWallets = [];
+        this.walletCache = new Map();
         this.isSpinning = false;
         this.spinDuration = 3000; // 3 seconds spin
+        this.lastWalletFetch = 0;
+        this.CACHE_DURATION = 60000; // 1 minute cache
         
         this.initializeEventListeners();
         this.startDataRefresh();
@@ -552,53 +555,99 @@ class CoinTracker {
 
     async initializeHighRollers() {
         try {
-            // Check for required elements first
             const spinner = document.querySelector('.slot-spinner');
             const spinButton = document.querySelector('.spin-button');
-            const winnerDetails = document.querySelector('.winner-details');
+            const slotFrame = document.querySelector('.slot-frame');
             
-            if (!spinner || !spinButton || !winnerDetails) {
+            if (!spinner || !spinButton || !slotFrame) {
                 console.error('Required elements for slot machine not found');
                 return;
             }
 
-            // Fetch top traders using the correct endpoint
-            const response = await fetch(`${this.apiEndpoint}/top-traders/all?expandPnl=true&sortBy=total&limit=10`, {
-                headers: {
-                    'x-api-key': this.apiKey,
-                    'Accept': 'application/json'
-                }
-            });
+            // Add loading state
+            spinner.classList.add('loading');
+            slotFrame.classList.add('loading');
+            spinButton.disabled = true;
 
-            if (!response.ok) {
-                throw new Error(`API request failed: ${response.status}`);
+            // Check cache first
+            const now = Date.now();
+            if (this.topWallets.length > 0 && (now - this.lastWalletFetch) < this.CACHE_DURATION) {
+                // Use cached data
+                this.showInitialWallets(spinner, slotFrame, spinButton);
+                return;
             }
 
-            const data = await response.json();
-            this.topWallets = data.wallets;
+            try {
+                // Fetch fresh data with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${this.apiEndpoint}/top-traders/all?expandPnl=true&sortBy=total&limit=10`, {
+                    headers: {
+                        'x-api-key': this.apiKey,
+                        'Accept': 'application/json'
+                    },
+                    signal: controller.signal
+                });
 
-            // Create initial slot items
-            this.createSlotItems();
+                clearTimeout(timeoutId);
 
-            // Add click handler to spin button
-            spinButton.addEventListener('click', () => this.spin());
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
 
-            // Enable spin button
-            spinButton.disabled = false;
+                const data = await response.json();
+                
+                if (data && Array.isArray(data.wallets) && data.wallets.length > 0) {
+                    // Update cache only if we got valid data
+                    this.topWallets = data.wallets;
+                    this.lastWalletFetch = now;
+                } else {
+                    throw new Error('Invalid data format received');
+                }
+            } catch (apiError) {
+                console.warn('API request failed:', apiError);
+                // If API fails, use fallback data
+                if (this.topWallets.length === 0) {
+                    this.topWallets = this.generateFallbackData();
+                }
+            }
+
+            // Always show wallets, whether from API or fallback
+            this.showInitialWallets(spinner, slotFrame, spinButton);
 
         } catch (error) {
-            console.error('Error initializing high rollers:', error);
-            // Use fallback data if API fails
-            this.topWallets = Array.from({ length: 10 }, (_, i) => ({
-                wallet: `Wallet${i + 1}`,
-                summary: {
-                    total: Math.random() * 100000,
-                    totalWins: Math.floor(Math.random() * 100),
-                    totalLosses: Math.floor(Math.random() * 50)
-                }
-            }));
-            this.createSlotItems();
+            console.error('Error in initializeHighRollers:', error);
+            // Final fallback - ensure we always show something
+            this.topWallets = this.generateFallbackData();
+            this.showInitialWallets(spinner, slotFrame, spinButton);
         }
+    }
+
+    showInitialWallets(spinner, slotFrame, spinButton) {
+        // Remove loading state
+        spinner.classList.remove('loading');
+        slotFrame.classList.remove('loading');
+        
+        // Create initial slot items immediately
+        this.createSlotItems();
+        spinButton.disabled = false;
+    }
+
+    generateFallbackData() {
+        return Array.from({ length: 10 }, (_, i) => ({
+            wallet: `Wallet${i + 1}`,
+            summary: {
+                realized: Math.floor(Math.random() * 1000000) + 100000,
+                unrealized: Math.floor(Math.random() * 500000),
+                total: Math.floor(Math.random() * 1500000) + 200000,
+                totalInvested: Math.floor(Math.random() * 2000000) + 500000,
+                totalWins: Math.floor(Math.random() * 100) + 50,
+                totalLosses: Math.floor(Math.random() * 50),
+                winPercentage: Math.random() * 100,
+                lossPercentage: Math.random() * 100
+            }
+        }));
     }
 
     createSlotItems() {
@@ -610,9 +659,20 @@ class CoinTracker {
 
         // Create initial visible wallets (showing 3 by default)
         const initialWallets = this.topWallets.slice(0, 3);
-        initialWallets.forEach(wallet => {
+        
+        // Add items with staggered animation
+        initialWallets.forEach((wallet, index) => {
             const item = this.createWalletItem(wallet);
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(20px)';
             spinner.appendChild(item);
+            
+            // Trigger animation after a brief delay
+            setTimeout(() => {
+                item.style.transition = 'all 0.3s ease-out';
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            }, index * 100);
         });
     }
 
@@ -620,15 +680,26 @@ class CoinTracker {
         const item = document.createElement('div');
         item.className = 'slot-item';
         
-        const rankEmoji = this.getHighRollerEmoji(this.topWallets.indexOf(wallet));
-        const formattedAddress = this.formatAddress(wallet.wallet);
-        const formattedValue = this.formatNumber(wallet.summary.total);
+        // Safely get wallet index and rank
+        const walletIndex = this.topWallets.indexOf(wallet);
+        const rankEmoji = this.getHighRollerEmoji(walletIndex);
+        
+        // Safely get wallet address
+        const walletAddress = wallet.wallet || 'Unknown Wallet';
+        const formattedAddress = this.formatAddress(walletAddress);
+        
+        // Calculate total value from summary
+        const totalValue = wallet.summary?.total || 0;
+        const isPositive = totalValue >= 0;
+        const formattedValue = this.formatNumber(Math.abs(totalValue));
         
         item.innerHTML = `
-            <div class="wallet-rank">${rankEmoji} #${this.topWallets.indexOf(wallet) + 1}</div>
+            <div class="wallet-rank">${rankEmoji} #${walletIndex + 1}</div>
             <div class="wallet-info">
                 <div class="wallet-address">${formattedAddress}</div>
-                <div class="wallet-profit">$${formattedValue}</div>
+                <div class="wallet-profit ${isPositive ? 'positive' : 'negative'}">
+                    ${isPositive ? '+' : '-'}$${formattedValue}
+                </div>
             </div>
         `;
         
@@ -728,9 +799,12 @@ class CoinTracker {
     async showDetailedWalletInfo(wallet) {
         try {
             // Calculate PNL data
-            const totalPnl = wallet.summary?.total || 0;
-            const winRate = ((wallet.summary?.totalWins || 0) / 
-                (wallet.summary?.totalWins + wallet.summary?.totalLosses || 1) * 100).toFixed(1);
+            const summary = wallet.summary || {};
+            const totalPnl = summary.total || 0;
+            const realizedPnl = summary.realized || 0;
+            const unrealizedPnl = summary.unrealized || 0;
+            const winRate = ((summary.totalWins || 0) / 
+                (summary.totalWins + summary.totalLosses || 1) * 100).toFixed(1);
             
             // Create or get existing modal
             let modal = document.querySelector('.wallet-detail-modal');
@@ -740,9 +814,11 @@ class CoinTracker {
                 document.body.appendChild(modal);
             }
             
-            // Format wallet data with accurate information
-            const formattedAddress = this.formatAddress(wallet.wallet || wallet.address || 'Unknown');
-            const formattedValue = this.formatNumber(totalPnl);
+            // Format values
+            const formattedAddress = this.formatAddress(wallet.wallet || 'Unknown');
+            const formattedTotal = this.formatNumber(Math.abs(totalPnl));
+            const formattedRealized = this.formatNumber(Math.abs(realizedPnl));
+            const formattedUnrealized = this.formatNumber(Math.abs(unrealizedPnl));
             
             modal.innerHTML = `
                 <div class="modal-content">
@@ -762,7 +838,7 @@ class CoinTracker {
                             <div class="stat-box">
                                 <div class="stat-label">Total PNL</div>
                                 <div class="stat-value ${totalPnl >= 0 ? 'positive' : 'negative'}">
-                                    ${totalPnl >= 0 ? '+' : ''}$${formattedValue}
+                                    ${totalPnl >= 0 ? '+' : '-'}$${formattedTotal}
                                 </div>
                             </div>
                             <div class="stat-box">
@@ -774,20 +850,27 @@ class CoinTracker {
                             <h3>Performance Summary</h3>
                             <div class="activity-timeline">
                                 <div class="timeline-item">
+                                    <span class="activity-label">Realized PNL</span>
+                                    <span class="activity-value ${realizedPnl >= 0 ? 'highlight-positive' : 'highlight-negative'}">
+                                        ${realizedPnl >= 0 ? '+' : '-'}$${formattedRealized}
+                                    </span>
+                                </div>
+                                <div class="timeline-item">
+                                    <span class="activity-label">Unrealized PNL</span>
+                                    <span class="activity-value ${unrealizedPnl >= 0 ? 'highlight-positive' : 'highlight-negative'}">
+                                        ${unrealizedPnl >= 0 ? '+' : '-'}$${formattedUnrealized}
+                                    </span>
+                                </div>
+                                <div class="timeline-item">
                                     <span class="activity-label">Total Trades</span>
-                                    <span class="activity-value">${(wallet.summary?.totalWins || 0) + (wallet.summary?.totalLosses || 0)}</span>
+                                    <span class="activity-value">${(summary.totalWins || 0) + (summary.totalLosses || 0)}</span>
                                 </div>
                                 <div class="timeline-item">
-                                    <span class="activity-label">Winning Trades</span>
-                                    <span class="activity-value highlight-positive">${wallet.summary?.totalWins || 0}</span>
-                                </div>
-                                <div class="timeline-item">
-                                    <span class="activity-label">Losing Trades</span>
-                                    <span class="activity-value highlight-negative">${wallet.summary?.totalLosses || 0}</span>
-                                </div>
-                                <div class="timeline-item">
-                                    <span class="activity-label">Last Updated</span>
-                                    <span class="activity-value">${new Date().toLocaleString()}</span>
+                                    <span class="activity-label">Win/Loss</span>
+                                    <span class="activity-value">
+                                        <span class="highlight-positive">${summary.totalWins || 0}W</span> / 
+                                        <span class="highlight-negative">${summary.totalLosses || 0}L</span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -795,25 +878,24 @@ class CoinTracker {
                 </div>
             `;
 
-            // Store scroll position
-            const scrollPosition = window.scrollY;
-
             // Add modal to document and show with animation
             requestAnimationFrame(() => {
                 modal.classList.add('show');
-                document.body.style.overflow = 'hidden'; // Prevent background scrolling
             });
 
             // Handle close button
             const closeButton = modal.querySelector('.close-button');
             const closeModal = () => {
                 modal.classList.remove('show');
-                document.body.style.overflow = ''; // Restore scrolling
-                // Restore scroll position
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
                 window.scrollTo(0, scrollPosition);
-                setTimeout(() => modal.remove(), 300);
+                
+                // Remove modal after animation completes
+                setTimeout(() => {
+                    modal.remove();
+                }, 500);
             };
-            closeButton.onclick = closeModal;
 
             // Handle copy address
             const copyButton = modal.querySelector('.copy-icon');
@@ -822,18 +904,23 @@ class CoinTracker {
                 try {
                     await navigator.clipboard.writeText(addressToCopy);
                     copyButton.textContent = '✓';
-                    setTimeout(() => copyButton.textContent = '📋', 1000);
+                    copyButton.style.background = 'rgba(74, 222, 128, 0.2)';
+                    setTimeout(() => {
+                        copyButton.textContent = '📋';
+                        copyButton.style.background = '';
+                    }, 1000);
                 } catch (error) {
                     console.error('Failed to copy address:', error);
                 }
             };
 
-            // Handle click outside to close
+            // Setup event listeners
+            closeButton.onclick = closeModal;
             modal.onclick = (e) => {
                 if (e.target === modal) closeModal();
             };
 
-            // Handle escape key to close
+            // Handle escape key
             const handleEscape = (e) => {
                 if (e.key === 'Escape') {
                     closeModal();
@@ -841,6 +928,13 @@ class CoinTracker {
                 }
             };
             document.addEventListener('keydown', handleEscape);
+
+            // Add entrance animation class to modal content
+            const modalContent = modal.querySelector('.modal-content');
+            requestAnimationFrame(() => {
+                modalContent.style.transform = 'translateY(0) scale(1)';
+                modalContent.style.opacity = '1';
+            });
 
         } catch (error) {
             console.error('Error showing wallet details:', error);
@@ -910,6 +1004,132 @@ class CoinTracker {
         }
     }
 }
+
+class LoadingScreen {
+    constructor() {
+        this.loadingScreen = document.querySelector('.loading-screen');
+        this.progressFill = document.querySelector('.progress-fill');
+        this.progressPercentage = document.querySelector('.progress-percentage');
+        this.reels = document.querySelectorAll('.reel');
+        this.appContainer = document.querySelector('.app-container');
+        this.progress = 0;
+        this.isLoading = true;
+        
+        // Casino symbols for reels
+        this.symbols = ['🎰', '💎', '🎲', '7️⃣', '🎯', '🏆'];
+        
+        this.initialize();
+    }
+    
+    initialize() {
+        // Start animations
+        this.animateReels();
+        this.simulateLoading();
+        this.initializeLottieAnimation();
+    }
+    
+    animateReels() {
+        this.reels.forEach((reel, index) => {
+            this.spinReel(reel, index * 100); // Stagger the start of each reel
+        });
+    }
+    
+    spinReel(reel, delay) {
+        setTimeout(() => {
+            let currentIndex = 0;
+            setInterval(() => {
+                reel.textContent = this.symbols[currentIndex];
+                currentIndex = (currentIndex + 1) % this.symbols.length;
+                
+                // Add a quick scaling animation on symbol change
+                reel.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    reel.style.transform = 'scale(1)';
+                }, 100);
+            }, 1000); // Change symbol every second
+        }, delay);
+    }
+    
+    simulateLoading() {
+        const increment = () => {
+            if (this.progress < 100 && this.isLoading) {
+                this.progress += Math.random() * 2; // Random increment for more natural loading
+                if (this.progress > 100) this.progress = 100;
+                
+                this.updateProgress();
+                
+                if (this.progress < 100) {
+                    setTimeout(increment, 50);
+                } else {
+                    this.finishLoading();
+                }
+            }
+        };
+        
+        increment();
+    }
+    
+    updateProgress() {
+        const percentage = Math.floor(this.progress);
+        this.progressFill.style.width = `${percentage}%`;
+        this.progressPercentage.textContent = `${percentage}%`;
+        
+        // Update loading text based on progress
+        const loadingText = document.querySelector('.loading-text');
+        const loadingSubtext = document.querySelector('.loading-subtext');
+        
+        if (percentage < 30) {
+            loadingText.textContent = 'Preparing Your High Stakes Experience';
+            loadingSubtext.textContent = 'Initializing premium features...';
+        } else if (percentage < 60) {
+            loadingText.textContent = 'Rolling the Dice';
+            loadingSubtext.textContent = 'Loading market data...';
+        } else if (percentage < 90) {
+            loadingText.textContent = 'Shuffling the Deck';
+            loadingSubtext.textContent = 'Analyzing trends...';
+        } else {
+            loadingText.textContent = 'Ready to Play';
+            loadingSubtext.textContent = 'Launching your experience...';
+        }
+    }
+    
+    initializeLottieAnimation() {
+        // Initialize Lottie animation
+        const animation = lottie.loadAnimation({
+            container: document.getElementById('lottie-animation'),
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: 'https://assets5.lottiefiles.com/packages/lf20_xvrofzfk.json' // Casino-themed animation
+        });
+        
+        animation.setSpeed(0.8); // Slightly slow down the animation
+    }
+    
+    finishLoading() {
+        setTimeout(() => {
+            this.isLoading = false;
+            this.loadingScreen.classList.add('fade-out');
+            
+            // Show app container with animation
+            this.appContainer.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                this.appContainer.classList.add('show');
+            });
+            
+            // Initialize CoinTracker after loading screen is gone
+            setTimeout(() => {
+                this.loadingScreen.style.display = 'none';
+                new CoinTracker();
+            }, 1000);
+        }, 500);
+    }
+}
+
+// Initialize loading screen when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new LoadingScreen();
+});
 
 // Loading Screen Handler
 document.addEventListener('DOMContentLoaded', () => {

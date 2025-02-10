@@ -9,51 +9,42 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 </head>
 <body>
-    <!-- Premium Lottie Loading Screen -->
-    <div class="loading-screen active">
+    <!-- Enhanced Casino Loading Screen -->
+    <div class="loading-screen">
         <div class="loading-content">
-            <div class="casino-chips-decoration">
-                <div class="chip"></div>
-                <div class="chip"></div>
-                <div class="chip"></div>
-                <div class="chip"></div>
-                <div class="chip"></div>
+            <!-- Casino Chips Animation -->
+            <div class="casino-chips">
+                <div class="chip" style="top: 20%; left: 15%;"></div>
+                <div class="chip" style="top: 40%; right: 20%;"></div>
+                <div class="chip" style="bottom: 30%; left: 25%;"></div>
+                <div class="chip" style="bottom: 20%; right: 30%;"></div>
             </div>
             
-            <div class="spotlight-effect"></div>
+            <!-- Neon Brand Text -->
+            <div class="brand-text">$JACKPOT</div>
             
-            <div class="lottie-container">
-                <div class="glow-ring"></div>
-                <div class="pulse-rings">
-                    <div class="pulse-ring"></div>
-                    <div class="pulse-ring"></div>
-                    <div class="pulse-ring"></div>
-                </div>
-                <div id="lottie-animation"></div>
-                <div class="brand-text">
-                    <div class="brand-glow"></div>
-                    <span>$JACKPOT</span>
-                    <div class="brand-underline"></div>
-                </div>
+            <!-- Slot Machine Reels -->
+            <div class="loading-reels">
+                <div class="reel">🎰</div>
+                <div class="reel">💎</div>
+                <div class="reel">🎲</div>
             </div>
             
-            <div class="loading-status">
-                <div class="loading-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill"></div>
-                        <div class="progress-glow"></div>
-                    </div>
-                    <div class="progress-percentage">0%</div>
+            <!-- Lottie Animation Container -->
+            <div id="lottie-animation"></div>
+            
+            <!-- Loading Progress -->
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                    <div class="progress-glow"></div>
                 </div>
-                <div class="loading-text">Initializing...</div>
-                <div class="loading-subtext">Preparing your premium experience</div>
-                <div class="loading-cards">
-                    <div class="card-1">♠️</div>
-                    <div class="card-2">♥️</div>
-                    <div class="card-3">♣️</div>
-                    <div class="card-4">♦️</div>
-                </div>
+                <div class="progress-percentage">0%</div>
             </div>
+            
+            <!-- Loading Text -->
+            <div class="loading-text">Preparing Your High Stakes Experience</div>
+            <div class="loading-subtext">Loading premium features...</div>
         </div>
     </div>
 
@@ -126,42 +117,40 @@
                     </button>
                 </div>
 
-                <div class="winner-details hidden">
-                    <div class="winner-card">
-                        <div class="winner-header">
-                            <div class="winner-crown">👑</div>
-                            <div class="winner-title">WHALE OF THE DAY</div>
-                        </div>
-                        <div class="winner-stats">
-                            <!-- Stats will be dynamically inserted here -->
-                        </div>
-                        <div class="winner-chart">
-                            <!-- 30-day performance chart will be added here -->
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="market-pulse-panel">
                 <div class="pulse-card stats-card">
                     <div class="card-header">
-                        <div class="header-icon">🎲</div>
+                        <div class="header-icon">🎰</div>
                         <h3>House Stats</h3>
                         <div class="live-indicator">
                             <span class="pulse-dot"></span>
-                            <span id="lastUpdate">--:--:--</span>
+                            <span id="lastUpdate">5:00:34 PM</span>
                         </div>
                     </div>
                     <div class="stats-content">
                         <div class="stat-item">
-                            <span class="stat-icon">📈</span>
-                            <span id="totalTokens">0</span>
-                            <span class="stat-label">Active Games</span>
+                            <div class="stat-icon-wrapper">
+                                <span class="stat-icon">📈</span>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="totalTokens">97</span>
+                                <span class="stat-label">Active Games</span>
+                            </div>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-icon">💰</span>
-                            <span id="totalVolume">$0</span>
-                            <span class="stat-label">Total Volume</span>
+                            <div class="stat-icon-wrapper">
+                                <span class="stat-icon">💰</span>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="totalVolume">
+                                    <span class="currency">$</span>
+                                    <span class="amount">487.92</span>
+                                    <span class="unit">M</span>
+                                </span>
+                                <span class="stat-label">Total Volume</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -169,12 +158,16 @@
                 <div class="pulse-card tip-card">
                     <div class="card-header">
                         <div class="header-icon">💎</div>
-                        <h3>Quick Tip</h3>
+                        <h3>Quick Tips</h3>
                     </div>
                     <div class="tip-content">
                         <div class="tip-item">
                             <span class="tip-icon">🎯</span>
                             <p>Verify token addresses before placing bets</p>
+                        </div>
+                        <div class="tip-item">
+                            <span class="tip-icon">⚡</span>
+                            <p>Monitor market trends for optimal timing</p>
                         </div>
                         <div class="tip-highlight">
                             <span class="highlight-icon">🎲</span>
