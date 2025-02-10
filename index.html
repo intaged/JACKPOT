@@ -3,72 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>$SOLTREND | Crypto Class</title>
-    <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>$JACKPOT | High Stakes Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 </head>
 <body>
-    <!-- Loading Screen -->
+    <!-- Premium Lottie Loading Screen -->
     <div class="loading-screen active">
-        <div class="doodles">
-            <div class="doodle star">★</div>
-            <div class="doodle heart">♥</div>
-            <div class="doodle circle">○</div>
-            <div class="doodle arrow">→</div>
-        </div>
         <div class="loading-content">
-            <div class="chalkboard">
-                <div class="chalk-dust"></div>
-                <div class="logo-draw">
-                    <span>$</span>
-                    <span>S</span>
-                    <span>O</span>
-                    <span>L</span>
-                    <span>T</span>
-                    <span>R</span>
-                    <span>E</span>
-                    <span>N</span>
-                    <span>D</span>
+            <div class="casino-chips-decoration">
+                <div class="chip"></div>
+                <div class="chip"></div>
+                <div class="chip"></div>
+                <div class="chip"></div>
+                <div class="chip"></div>
+            </div>
+            
+            <div class="spotlight-effect"></div>
+            
+            <div class="lottie-container">
+                <div class="glow-ring"></div>
+                <div class="pulse-rings">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                </div>
+                <div id="lottie-animation"></div>
+                <div class="brand-text">
+                    <div class="brand-glow"></div>
+                    <span>$JACKPOT</span>
+                    <div class="brand-underline"></div>
                 </div>
             </div>
-            <div class="sticky-note enter-note">
-                <div class="pin"></div>
-                <button class="enter-button">
-                    <span class="highlighter-effect">Enter</span>
-                </button>
+            
+            <div class="loading-status">
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                        <div class="progress-glow"></div>
+                    </div>
+                    <div class="progress-percentage">0%</div>
+                </div>
+                <div class="loading-text">Initializing...</div>
+                <div class="loading-subtext">Preparing your premium experience</div>
+                <div class="loading-cards">
+                    <div class="card-1">♠️</div>
+                    <div class="card-2">♥️</div>
+                    <div class="card-3">♣️</div>
+                    <div class="card-4">♦️</div>
+                </div>
             </div>
         </div>
-        <div class="pencil-decoration left"></div>
-        <div class="pencil-decoration right"></div>
     </div>
 
-    <div class="notebook-bg"></div>
+    <div class="casino-bg"></div>
     <div class="app-container hidden">
-        <div class="pencil-decoration"></div>
+        <div class="casino-lights"></div>
         
         <header class="main-header">
             <div class="logo-section">
-                <h1>$SOLTREND</h1>
+                <h1>$JACKPOT</h1>
                 <div class="header-right">
                     <div class="social-links">
                         <a href="https://x.com/SOLLANATREND" class="social-link" title="Follow us on Twitter" target="_blank">
-                            <div class="sticky-note mini">
+                            <div class="casino-chip mini">
                                 <span>𝕏</span>
                             </div>
                         </a>
-                        <a href="https://t.me/+jy6bKs3WD_UxZDJh" class="social-link" title="Join our Telegram" target="_blank" onclick="window.open('https://t.me/+jy6bKs3WD_UxZDJh', '_blank'); return false;">
-                            <div class="sticky-note mini">
+                        <a href="https://t.me/+jy6bKs3WD_UxZDJh" class="social-link" title="Join our Telegram" target="_blank">
+                            <div class="casino-chip mini">
                                 <div class="telegram-logo">
                                     <div class="telegram-plane"></div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                    <span class="live-badge">Class in Session</span>
+                    <span class="live-badge">🎰 LIVE GAMES</span>
                 </div>
             </div>
             
-            <nav class="timeframe-nav sticky-note">
+            <nav class="timeframe-nav">
                 <button class="timeframe-btn" data-timeframe="5m">5M</button>
                 <button class="timeframe-btn" data-timeframe="15m">15M</button>
                 <button class="timeframe-btn" data-timeframe="30m">30M</button>
@@ -79,18 +94,10 @@
         </header>
 
         <main class="main-content">
-            <div class="sticky-note trending-header">
-                <div class="pushpin"></div>
-                <h2>📚 Today's Top Performers</h2>
-                <p class="trend-subtitle">Study these movers carefully - they're setting the curve!</p>
-            </div>
-
-            <div class="paper-card market-pulse">
-                <div class="paper-holes"></div>
-                <div class="pulse-header">
-                    <span class="pulse-icon">📝</span>
-                    <span class="pulse-text">Class Notes</span>
-                    <span class="pulse-time" id="lastUpdate">--:--:--</span>
+            <div class="casino-banner">
+                <div class="banner-content">
+                    <h2>🎲 Today's High Rollers</h2>
+                    <p class="banner-subtitle">Place your bets on the hottest movers in the house!</p>
                 </div>
             </div>
 
@@ -98,138 +105,131 @@
                 <!-- Coins will be dynamically inserted here -->
             </div>
 
-            <div class="sticky-note market-insight highlight">
-                <div class="pushpin"></div>
-                <div class="insight-header">
-                    <span class="insight-icon">💭</span>
-                    <span>Study Tip</span>
+            <!-- Enhanced High Rollers Lounge -->
+            <div class="high-rollers-lounge">
+                <div class="jackpot-header">
+                    <div class="jackpot-lights"></div>
+                    <h2>🎰 HIGH ROLLERS JACKPOT</h2>
+                    <div class="jackpot-subtitle">Today's Biggest Winners</div>
                 </div>
-                <p class="insight-text">Click on any token symbol to copy its address. The best students always do their research!</p>
+                
+                <div class="slot-machine-container">
+                    <div class="slot-frame">
+                        <div class="slot-spinner">
+                            <!-- Wallets will be dynamically inserted here -->
+                        </div>
+                        <div class="slot-highlight"></div>
+                    </div>
+                    <button class="spin-button">
+                        <span class="spin-icon">🎰</span>
+                        <span class="spin-text">SPIN</span>
+                    </button>
+                </div>
+
+                <div class="winner-details hidden">
+                    <div class="winner-card">
+                        <div class="winner-header">
+                            <div class="winner-crown">👑</div>
+                            <div class="winner-title">WHALE OF THE DAY</div>
+                        </div>
+                        <div class="winner-stats">
+                            <!-- Stats will be dynamically inserted here -->
+                        </div>
+                        <div class="winner-chart">
+                            <!-- 30-day performance chart will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="market-pulse-panel">
+                <div class="pulse-card stats-card">
+                    <div class="card-header">
+                        <div class="header-icon">🎲</div>
+                        <h3>House Stats</h3>
+                        <div class="live-indicator">
+                            <span class="pulse-dot"></span>
+                            <span id="lastUpdate">--:--:--</span>
+                        </div>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stat-item">
+                            <span class="stat-icon">📈</span>
+                            <span id="totalTokens">0</span>
+                            <span class="stat-label">Active Games</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">💰</span>
+                            <span id="totalVolume">$0</span>
+                            <span class="stat-label">Total Volume</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pulse-card tip-card">
+                    <div class="card-header">
+                        <div class="header-icon">💎</div>
+                        <h3>Quick Tip</h3>
+                    </div>
+                    <div class="tip-content">
+                        <div class="tip-item">
+                            <span class="tip-icon">🎯</span>
+                            <p>Verify token addresses before placing bets</p>
+                        </div>
+                        <div class="tip-highlight">
+                            <span class="highlight-icon">🎲</span>
+                            <span>Play Responsibly</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
-        <footer class="app-footer chalkboard">
+        <footer class="app-footer">
             <div class="footer-content">
                 <div class="update-info">
-                    Refreshes every 5 seconds
+                    Auto-refreshes every 5 seconds • Play Responsibly
                 </div>
             </div>
         </footer>
-
-        <div class="eraser"></div>
-        <div class="ruler"></div>
     </div>
-    <script src="script.js"></script>
 
-    <!-- Add this before the closing body tag -->
+    <!-- Coin Detail Modal -->
     <div class="coin-detail-modal hidden">
-        <div class="notebook-page">
-            <div class="page-header">
+        <div class="modal-content">
+            <div class="modal-header">
                 <div class="coin-title">
                     <div class="coin-icon-large"></div>
                     <h2 class="coin-name-large"></h2>
-                    <span class="close-button">✕</span>
+                    <span class="close-button">×</span>
                 </div>
-                <div class="subject-tabs">
-                    <button class="tab-btn active" data-tab="investment">📈 Investment</button>
-                    <button class="tab-btn" data-tab="market">📊 Market</button>
-                    <button class="tab-btn" data-tab="strategy">🎯 Strategy</button>
+                <div class="tab-navigation">
+                    <button class="tab-btn active" data-tab="investment">💰 Stakes</button>
+                    <button class="tab-btn" data-tab="market">📊 House Edge</button>
+                    <button class="tab-btn" data-tab="strategy">🎯 Game Plan</button>
                 </div>
             </div>
 
-            <div class="page-content">
+            <div class="modal-body">
                 <div class="tab-content active" data-tab="investment">
-                    <div class="highlight-box">
-                        <div class="momentum-header">
-                            <h3>Investment Highlights</h3>
-                            <div class="momentum-badge">
-                                <div class="momentum-indicator"></div>
-                                <div class="momentum-sparkline"></div>
-                            </div>
-                        </div>
-                        <p class="momentum-text"></p>
-                        <div class="key-metrics">
-                            <div class="metric-card">
-                                <span class="metric-icon">💰</span>
-                                <span class="metric-label">Price</span>
-                                <span class="metric-value price-value"></span>
-                            </div>
-                            <div class="metric-card">
-                                <span class="metric-icon">📊</span>
-                                <span class="metric-label">24h Change</span>
-                                <span class="metric-value change-value"></span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Investment content -->
                 </div>
-
                 <div class="tab-content" data-tab="market">
-                    <div class="market-overview">
-                        <div class="market-stats">
-                            <div class="stat-row">
-                                <div class="stat-info">
-                                    <span class="stat-icon">📈</span>
-                                    <span class="stat-label">Trading Activity</span>
-                                </div>
-                                <span class="trading-activity"></span>
-                            </div>
-                            <div class="stat-row">
-                                <div class="stat-info">
-                                    <span class="stat-icon">💎</span>
-                                    <span class="stat-label">Market Cap</span>
-                                </div>
-                                <span class="market-cap"></span>
-                            </div>
-                        </div>
-                        <div class="market-analysis-box">
-                            <h4>Market Analysis</h4>
-                            <div class="market-analysis"></div>
-                        </div>
-                    </div>
+                    <!-- Market content -->
                 </div>
-
                 <div class="tab-content" data-tab="strategy">
-                    <div class="strategy-points">
-                        <div class="strategy-item">
-                            <div class="strategy-header">
-                                <span class="bullet">📍</span>
-                                <h4>Market Position</h4>
-                            </div>
-                            <p class="market-position"></p>
-                        </div>
-                        <div class="strategy-item">
-                            <div class="strategy-header">
-                                <span class="bullet">📊</span>
-                                <h4>Technical Outlook</h4>
-                            </div>
-                            <p class="technical-outlook"></p>
-                        </div>
-                        <div class="strategy-item">
-                            <div class="strategy-header">
-                                <span class="bullet">⚠️</span>
-                                <h4>Risk Assessment</h4>
-                            </div>
-                            <p class="risk-assessment"></p>
-                        </div>
-                        <div class="strategy-item">
-                            <div class="strategy-header">
-                                <span class="bullet">🎯</span>
-                                <h4>Entry Point</h4>
-                            </div>
-                            <p class="entry-point"></p>
-                        </div>
-                    </div>
+                    <!-- Strategy content -->
                 </div>
             </div>
 
-            <div class="page-footer">
-                <div class="paper-clip"></div>
+            <div class="modal-footer">
                 <div class="footer-content">
                     <span class="last-updated">Last Updated: <span class="update-time"></span></span>
-                    <div class="footer-note">📝 Analysis is for educational purposes only</div>
+                    <div class="footer-note">🎲 Trade at your own risk</div>
                 </div>
             </div>
         </div>
     </div>
+    <script src="script.js"></script>
 </body>
 </html> 

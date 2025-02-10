@@ -1,6 +1,6 @@
-# $SOLTREND
+# $JACKPOT
 
-A real-time cryptocurrency tracking platform with a unique school-themed design. Track top performing tokens on Solana with live updates and detailed analytics.
+A real-time cryptocurrency tracking platform with a casino-themed design. Track top performing tokens on Solana with live updates and detailed analytics.
 
 ## Features
 
