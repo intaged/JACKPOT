@@ -1221,7 +1221,7 @@ body {
 .wallet-profit {
     font-weight: bold;
     font-size: 1.1em;
-    text-shadow: 0 0 10px rgba(0,255,0,0.3);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 .wallet-profit.positive {

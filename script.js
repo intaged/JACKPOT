@@ -638,16 +638,26 @@ class CoinTracker {
         return Array.from({ length: 10 }, (_, i) => ({
             wallet: `Wallet${i + 1}`,
             summary: {
-                realized: Math.floor(Math.random() * 1000000) + 100000,
-                unrealized: Math.floor(Math.random() * 500000),
-                total: Math.floor(Math.random() * 1500000) + 200000,
+                realized: Math.random() > 0.5 ? Math.floor(Math.random() * 1000000) + 100000 : -Math.floor(Math.random() * 500000),
+                unrealized: Math.random() > 0.5 ? Math.floor(Math.random() * 500000) : -Math.floor(Math.random() * 250000),
+                total: 0, // Will be calculated
                 totalInvested: Math.floor(Math.random() * 2000000) + 500000,
                 totalWins: Math.floor(Math.random() * 100) + 50,
                 totalLosses: Math.floor(Math.random() * 50),
-                winPercentage: Math.random() * 100,
-                lossPercentage: Math.random() * 100
+                winPercentage: 0, // Will be calculated
+                lossPercentage: 0 // Will be calculated
             }
-        }));
+        })).map(wallet => {
+            // Calculate total PNL
+            wallet.summary.total = wallet.summary.realized + wallet.summary.unrealized;
+            
+            // Calculate percentages
+            const totalTrades = wallet.summary.totalWins + wallet.summary.totalLosses;
+            wallet.summary.winPercentage = totalTrades > 0 ? (wallet.summary.totalWins / totalTrades) * 100 : 0;
+            wallet.summary.lossPercentage = totalTrades > 0 ? (wallet.summary.totalLosses / totalTrades) * 100 : 0;
+            
+            return wallet;
+        });
     }
 
     createSlotItems() {
@@ -688,8 +698,9 @@ class CoinTracker {
         const walletAddress = wallet.wallet || 'Unknown Wallet';
         const formattedAddress = this.formatAddress(walletAddress);
         
-        // Calculate total value from summary
-        const totalValue = wallet.summary?.total || 0;
+        // Calculate total value from summary with proper sign handling
+        const summary = wallet.summary || {};
+        const totalValue = summary.total || 0;
         const isPositive = totalValue >= 0;
         const formattedValue = this.formatNumber(Math.abs(totalValue));
         
