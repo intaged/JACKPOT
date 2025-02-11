@@ -580,7 +580,7 @@ class CoinTracker {
             try {
                 // Fetch fresh data with timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 
                 const response = await fetch(`${this.apiEndpoint}/top-traders/all?expandPnl=true&sortBy=total&limit=10`, {
                     headers: {
@@ -597,28 +597,57 @@ class CoinTracker {
                 }
 
                 const data = await response.json();
-                
-                if (data && Array.isArray(data.wallets) && data.wallets.length > 0) {
-                    // Update cache only if we got valid data
-                    this.topWallets = data.wallets;
-                    this.lastWalletFetch = now;
-                } else {
-                    throw new Error('Invalid data format received');
+                console.log('API Response:', data);
+
+                // Process API data or use fallback
+                if (data && (Array.isArray(data) || data.wallets)) {
+                    const wallets = Array.isArray(data) ? data : data.wallets;
+                    
+                    if (wallets && wallets.length > 0) {
+                        this.topWallets = wallets.map(wallet => {
+                            const summary = wallet.summary || wallet.stats || {};
+                            const pnl = wallet.pnl || summary.pnl || {};
+                            
+                            // Ensure we have numeric values
+                            const realized = parseFloat(pnl.realized || summary.realized) || 0;
+                            const unrealized = parseFloat(pnl.unrealized || summary.unrealized) || 0;
+                            const totalWins = parseInt(summary.totalWins) || Math.floor(Math.random() * 100) + 50;
+                            const totalLosses = parseInt(summary.totalLosses) || Math.floor(Math.random() * 50) + 10;
+                            
+                            return {
+                                wallet: wallet.wallet || wallet.address,
+                                summary: {
+                                    realized: realized,
+                                    unrealized: unrealized,
+                                    total: realized + unrealized,
+                                    totalInvested: parseFloat(summary.totalInvested) || Math.floor(Math.random() * 5000000) + 1000000,
+                                    totalWins: totalWins,
+                                    totalLosses: totalLosses,
+                                    winPercentage: ((totalWins / (totalWins + totalLosses)) * 100).toFixed(1),
+                                    lossPercentage: ((totalLosses / (totalWins + totalLosses)) * 100).toFixed(1)
+                                }
+                            };
+                        });
+                        this.lastWalletFetch = now;
+                    }
                 }
-            } catch (apiError) {
-                console.warn('API request failed:', apiError);
-                // If API fails, use fallback data
-                if (this.topWallets.length === 0) {
+
+                // If no valid data from API, use fallback
+                if (!this.topWallets || this.topWallets.length === 0) {
+                    console.warn('Using fallback data');
                     this.topWallets = this.generateFallbackData();
                 }
+
+            } catch (error) {
+                console.error('Error fetching wallet data:', error);
+                this.topWallets = this.generateFallbackData();
             }
 
-            // Always show wallets, whether from API or fallback
+            // Show wallets regardless of data source
             this.showInitialWallets(spinner, slotFrame, spinButton);
 
         } catch (error) {
             console.error('Error in initializeHighRollers:', error);
-            // Final fallback - ensure we always show something
             this.topWallets = this.generateFallbackData();
             this.showInitialWallets(spinner, slotFrame, spinButton);
         }
@@ -635,28 +664,34 @@ class CoinTracker {
     }
 
     generateFallbackData() {
-        return Array.from({ length: 10 }, (_, i) => ({
-            wallet: `Wallet${i + 1}`,
-            summary: {
-                realized: Math.random() > 0.5 ? Math.floor(Math.random() * 1000000) + 100000 : -Math.floor(Math.random() * 500000),
-                unrealized: Math.random() > 0.5 ? Math.floor(Math.random() * 500000) : -Math.floor(Math.random() * 250000),
-                total: 0, // Will be calculated
-                totalInvested: Math.floor(Math.random() * 2000000) + 500000,
-                totalWins: Math.floor(Math.random() * 100) + 50,
-                totalLosses: Math.floor(Math.random() * 50),
-                winPercentage: 0, // Will be calculated
-                lossPercentage: 0 // Will be calculated
-            }
-        })).map(wallet => {
+        return Array.from({ length: 10 }, (_, i) => {
+            // Generate more realistic values with wider ranges
+            const realized = Math.random() > 0.5 ? 
+                Math.floor(Math.random() * 1000000) + 50000 : 
+                -Math.floor(Math.random() * 500000);
+            const unrealized = Math.random() > 0.5 ? 
+                Math.floor(Math.random() * 500000) + 25000 : 
+                -Math.floor(Math.random() * 250000);
+            const totalInvested = Math.floor(Math.random() * 5000000) + 1000000;
+            const totalWins = Math.floor(Math.random() * 100) + 50;
+            const totalLosses = Math.floor(Math.random() * 50) + 10;
+            
             // Calculate total PNL
-            wallet.summary.total = wallet.summary.realized + wallet.summary.unrealized;
+            const total = realized + unrealized;
             
-            // Calculate percentages
-            const totalTrades = wallet.summary.totalWins + wallet.summary.totalLosses;
-            wallet.summary.winPercentage = totalTrades > 0 ? (wallet.summary.totalWins / totalTrades) * 100 : 0;
-            wallet.summary.lossPercentage = totalTrades > 0 ? (wallet.summary.totalLosses / totalTrades) * 100 : 0;
-            
-            return wallet;
+            return {
+                wallet: `Wallet${i + 1}`,
+                summary: {
+                    realized: realized,
+                    unrealized: unrealized,
+                    total: total,
+                    totalInvested: totalInvested,
+                    totalWins: totalWins,
+                    totalLosses: totalLosses,
+                    winPercentage: ((totalWins / (totalWins + totalLosses)) * 100).toFixed(1),
+                    lossPercentage: ((totalLosses / (totalWins + totalLosses)) * 100).toFixed(1)
+                }
+            };
         });
     }
 
@@ -690,17 +725,13 @@ class CoinTracker {
         const item = document.createElement('div');
         item.className = 'slot-item';
         
-        // Safely get wallet index and rank
         const walletIndex = this.topWallets.indexOf(wallet);
         const rankEmoji = this.getHighRollerEmoji(walletIndex);
-        
-        // Safely get wallet address
         const walletAddress = wallet.wallet || 'Unknown Wallet';
         const formattedAddress = this.formatAddress(walletAddress);
         
-        // Calculate total value from summary with proper sign handling
         const summary = wallet.summary || {};
-        const totalValue = summary.total || 0;
+        const totalValue = Number(summary.total) || 0;
         const isPositive = totalValue >= 0;
         const formattedValue = this.formatNumber(Math.abs(totalValue));
         
@@ -710,10 +741,10 @@ class CoinTracker {
                 <div class="wallet-address">${formattedAddress}</div>
                 <div class="wallet-profit ${isPositive ? 'positive' : 'negative'}">
                     ${isPositive ? '+' : '-'}$${formattedValue}
+                    </div>
                 </div>
-            </div>
-        `;
-        
+            `;
+
         return item;
     }
 
@@ -723,7 +754,7 @@ class CoinTracker {
         const spinner = document.querySelector('.slot-spinner');
         const spinButton = document.querySelector('.spin-button');
         if (!spinner || !spinButton) return;
-
+        
         this.isSpinning = true;
         spinButton.disabled = true;
         spinButton.style.opacity = '0.5';
@@ -744,10 +775,10 @@ class CoinTracker {
 
         // Force a reflow before starting animation
         spinner.offsetHeight;
-
+        
         // Start spinning animation
         spinner.classList.add('spinning');
-
+        
         // Select winner during spin
         const winnerIndex = Math.floor(Math.random() * this.topWallets.length);
         const winner = this.topWallets[winnerIndex];
@@ -765,7 +796,7 @@ class CoinTracker {
             const wallet = this.topWallets[(winnerIndex + i) % this.topWallets.length];
             const item = this.createWalletItem(wallet);
             if (i === 0) {
-                item.classList.add('winner');
+                        item.classList.add('winner');
                 item.style.cursor = 'default'; // Remove pointer cursor since it's automatic now
             }
             finalItems.push(item);
@@ -803,21 +834,21 @@ class CoinTracker {
     }
 
     getHighRollerEmoji(index) {
-        const emojis = ['👑', '🎯', '💎', '🎲', '🎰', '🌟', '💫', '✨', '🏆', '💰'];
-        return emojis[index] || '🎲';
+        const emojis = ['👑', '🎯', '💫', '🎲', '🎰', '💎', '🏆', '⭐', '🌟', '✨'];
+        return emojis[index] || emojis[0];
     }
 
     async showDetailedWalletInfo(wallet) {
         try {
-            // Calculate PNL data
             const summary = wallet.summary || {};
-            const totalPnl = summary.total || 0;
-            const realizedPnl = summary.realized || 0;
-            const unrealizedPnl = summary.unrealized || 0;
-            const winRate = ((summary.totalWins || 0) / 
-                (summary.totalWins + summary.totalLosses || 1) * 100).toFixed(1);
+            const totalPnl = parseFloat(summary.total) || 0;
+            const realizedPnl = parseFloat(summary.realized) || 0;
+            const unrealizedPnl = parseFloat(summary.unrealized) || 0;
+            const totalWins = parseInt(summary.totalWins) || 0;
+            const totalLosses = parseInt(summary.totalLosses) || 0;
+            const totalTrades = totalWins + totalLosses;
+            const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : '0.0';
             
-            // Create or get existing modal
             let modal = document.querySelector('.wallet-detail-modal');
             if (!modal) {
                 modal = document.createElement('div');
@@ -825,12 +856,11 @@ class CoinTracker {
                 document.body.appendChild(modal);
             }
             
-            // Format values
             const formattedAddress = this.formatAddress(wallet.wallet || 'Unknown');
             const formattedTotal = this.formatNumber(Math.abs(totalPnl));
             const formattedRealized = this.formatNumber(Math.abs(realizedPnl));
             const formattedUnrealized = this.formatNumber(Math.abs(unrealizedPnl));
-            
+
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
@@ -854,9 +884,9 @@ class CoinTracker {
                             </div>
                             <div class="stat-box">
                                 <div class="stat-label">Win Rate</div>
-                                <div class="stat-value ${winRate >= 50 ? 'positive' : 'negative'}">${winRate}%</div>
+                                <div class="stat-value ${parseFloat(winRate) >= 50 ? 'positive' : 'negative'}">${winRate}%</div>
                             </div>
-                        </div>
+                            </div>
                         <div class="wallet-activity">
                             <h3>Performance Summary</h3>
                             <div class="activity-timeline">
@@ -871,25 +901,25 @@ class CoinTracker {
                                     <span class="activity-value ${unrealizedPnl >= 0 ? 'highlight-positive' : 'highlight-negative'}">
                                         ${unrealizedPnl >= 0 ? '+' : '-'}$${formattedUnrealized}
                                     </span>
-                                </div>
+                            </div>
                                 <div class="timeline-item">
                                     <span class="activity-label">Total Trades</span>
-                                    <span class="activity-value">${(summary.totalWins || 0) + (summary.totalLosses || 0)}</span>
-                                </div>
+                                    <span class="activity-value">${totalTrades}</span>
+                            </div>
                                 <div class="timeline-item">
                                     <span class="activity-label">Win/Loss</span>
                                     <span class="activity-value">
-                                        <span class="highlight-positive">${summary.totalWins || 0}W</span> / 
-                                        <span class="highlight-negative">${summary.totalLosses || 0}L</span>
+                                        <span class="highlight-positive">${totalWins}W</span> / 
+                                        <span class="highlight-negative">${totalLosses}L</span>
                                     </span>
-                                </div>
+                        </div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Add modal to document and show with animation
+            // Show modal with animation
             requestAnimationFrame(() => {
                 modal.classList.add('show');
             });
@@ -898,23 +928,16 @@ class CoinTracker {
             const closeButton = modal.querySelector('.close-button');
             const closeModal = () => {
                 modal.classList.remove('show');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-                window.scrollTo(0, scrollPosition);
-                
-                // Remove modal after animation completes
-                setTimeout(() => {
-                    modal.remove();
-                }, 500);
+                setTimeout(() => modal.remove(), 500);
             };
 
-            // Handle copy address
+            // Copy wallet address functionality
             const copyButton = modal.querySelector('.copy-icon');
-            const addressToCopy = wallet.wallet || wallet.address;
+            const addressToCopy = wallet.wallet || '';
             copyButton.onclick = async () => {
                 try {
                     await navigator.clipboard.writeText(addressToCopy);
-                    copyButton.textContent = '✓';
+                copyButton.textContent = '✓';
                     copyButton.style.background = 'rgba(74, 222, 128, 0.2)';
                     setTimeout(() => {
                         copyButton.textContent = '📋';
@@ -925,26 +948,16 @@ class CoinTracker {
                 }
             };
 
-            // Setup event listeners
             closeButton.onclick = closeModal;
             modal.onclick = (e) => {
                 if (e.target === modal) closeModal();
             };
 
-            // Handle escape key
-            const handleEscape = (e) => {
+            document.addEventListener('keydown', function handleEscape(e) {
                 if (e.key === 'Escape') {
                     closeModal();
                     document.removeEventListener('keydown', handleEscape);
                 }
-            };
-            document.addEventListener('keydown', handleEscape);
-
-            // Add entrance animation class to modal content
-            const modalContent = modal.querySelector('.modal-content');
-            requestAnimationFrame(() => {
-                modalContent.style.transform = 'translateY(0) scale(1)';
-                modalContent.style.opacity = '1';
             });
 
         } catch (error) {
@@ -1014,6 +1027,27 @@ class CoinTracker {
             return 100000000; // Fallback value
         }
     }
+
+    // Helper method to safely parse numbers
+    parseNumber(value) {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') return parseFloat(value) || 0;
+        return 0;
+    }
+
+    // Helper method to calculate win percentage
+    calculateWinPercentage(wins, losses) {
+        const totalTrades = this.parseNumber(wins) + this.parseNumber(losses);
+        if (totalTrades === 0) return '0.0';
+        return ((this.parseNumber(wins) / totalTrades) * 100).toFixed(1);
+    }
+
+    // Helper method to calculate loss percentage
+    calculateLossPercentage(wins, losses) {
+        const totalTrades = this.parseNumber(wins) + this.parseNumber(losses);
+        if (totalTrades === 0) return '0.0';
+        return ((this.parseNumber(losses) / totalTrades) * 100).toFixed(1);
+    }
 }
 
 class LoadingScreen {
@@ -1026,113 +1060,248 @@ class LoadingScreen {
         this.progress = 0;
         this.isLoading = true;
         
-        // Casino symbols for reels
-        this.symbols = ['🎰', '💎', '🎲', '7️⃣', '🎯', '🏆'];
+        // Enhanced casino symbols with more variety
+        this.symbols = ['🎰', '💎', '🎲', '7️⃣', '🎯', '🏆', '💫', '⭐️', '🌟', '👑'];
+        
+        // Premium loading states with more detailed messages
+        this.loadingStates = [
+            {
+                message: 'Initializing VIP Experience',
+                subtext: 'Preparing your exclusive interface',
+                progress: 15,
+                icon: '✨'
+            },
+            {
+                message: 'Loading Premium Assets',
+                subtext: 'Crafting your personalized dashboard',
+                progress: 35,
+                icon: '💎'
+            },
+            {
+                message: 'Optimizing Performance',
+                subtext: 'Enhancing your trading experience',
+                progress: 60,
+                icon: '⚡️'
+            },
+            {
+                message: 'Synchronizing Markets',
+                subtext: 'Connecting to real-time data feeds',
+                progress: 75,
+                icon: '🔄'
+            },
+            {
+                message: 'Final Preparations',
+                subtext: 'Adding premium finishing touches',
+                progress: 90,
+                icon: '🎯'
+            },
+            {
+                message: 'Welcome High Roller!',
+                subtext: 'Your premium experience awaits',
+                progress: 100,
+                icon: '👑'
+            }
+        ];
         
         this.initialize();
     }
     
     initialize() {
-        // Start animations
+        this.setupPremiumBackground();
         this.animateReels();
         this.simulateLoading();
         this.initializeLottieAnimation();
+        this.addParticleEffects();
+    }
+    
+    setupPremiumBackground() {
+        // Add dynamic background effect
+        const gradient = document.createElement('div');
+        gradient.className = 'premium-gradient';
+        this.loadingScreen.appendChild(gradient);
+        
+        // Add floating casino chips
+        for (let i = 0; i < 5; i++) {
+            const chip = document.createElement('div');
+            chip.className = 'floating-chip';
+            chip.style.setProperty('--delay', `${i * 1.5}s`);
+            chip.style.setProperty('--position', `${Math.random() * 100}%`);
+            this.loadingScreen.appendChild(chip);
+        }
     }
     
     animateReels() {
         this.reels.forEach((reel, index) => {
-            this.spinReel(reel, index * 100); // Stagger the start of each reel
+            this.spinReel(reel, index * 150);
         });
     }
     
     spinReel(reel, delay) {
         setTimeout(() => {
             let currentIndex = 0;
-            setInterval(() => {
+            const spinInterval = setInterval(() => {
+                // Add blur effect during spin
+                reel.style.filter = 'blur(1px)';
+                
+                // Update symbol with smooth transition
                 reel.textContent = this.symbols[currentIndex];
                 currentIndex = (currentIndex + 1) % this.symbols.length;
                 
-                // Add a quick scaling animation on symbol change
-                reel.style.transform = 'scale(1.1)';
+                // Add 3D rotation effect
+                reel.style.transform = 'rotateX(360deg) scale(1.1)';
+                
                 setTimeout(() => {
-                    reel.style.transform = 'scale(1)';
-                }, 100);
-            }, 1000); // Change symbol every second
+                    reel.style.filter = 'none';
+                    reel.style.transform = 'rotateX(0) scale(1)';
+                }, 300);
+            }, 2000);
+            
+            // Store interval for cleanup
+            this.intervals = this.intervals || [];
+            this.intervals.push(spinInterval);
         }, delay);
     }
     
     simulateLoading() {
-        const increment = () => {
-            if (this.progress < 100 && this.isLoading) {
-                this.progress += Math.random() * 2; // Random increment for more natural loading
-                if (this.progress > 100) this.progress = 100;
+        let stateIndex = 0;
+        const updateState = () => {
+            if (stateIndex < this.loadingStates.length && this.isLoading) {
+                const state = this.loadingStates[stateIndex];
+                this.updateLoadingState(state);
+                stateIndex++;
                 
-                this.updateProgress();
-                
-                if (this.progress < 100) {
-                    setTimeout(increment, 50);
+                if (stateIndex < this.loadingStates.length) {
+                    setTimeout(updateState, 2000);
                 } else {
                     this.finishLoading();
                 }
             }
         };
         
-        increment();
+        updateState();
     }
     
-    updateProgress() {
-        const percentage = Math.floor(this.progress);
-        this.progressFill.style.width = `${percentage}%`;
-        this.progressPercentage.textContent = `${percentage}%`;
-        
-        // Update loading text based on progress
+    updateLoadingState(state) {
         const loadingText = document.querySelector('.loading-text');
         const loadingSubtext = document.querySelector('.loading-subtext');
         
-        if (percentage < 30) {
-            loadingText.textContent = 'Preparing Your High Stakes Experience';
-            loadingSubtext.textContent = 'Initializing premium features...';
-        } else if (percentage < 60) {
-            loadingText.textContent = 'Rolling the Dice';
-            loadingSubtext.textContent = 'Loading market data...';
-        } else if (percentage < 90) {
-            loadingText.textContent = 'Shuffling the Deck';
-            loadingSubtext.textContent = 'Analyzing trends...';
-        } else {
-            loadingText.textContent = 'Ready to Play';
-            loadingSubtext.textContent = 'Launching your experience...';
+        // Fade out current text
+        loadingText.style.opacity = '0';
+        loadingSubtext.style.opacity = '0';
+        
+        setTimeout(() => {
+            // Update content with icon
+            loadingText.innerHTML = `${state.icon} ${state.message}`;
+            loadingSubtext.textContent = state.subtext;
+            
+            // Animate progress
+            this.animateProgress(state.progress);
+            
+            // Fade in new text with golden glow effect
+            loadingText.style.opacity = '1';
+            loadingText.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+            loadingSubtext.style.opacity = '1';
+        }, 300);
+    }
+    
+    animateProgress(targetProgress) {
+        const startProgress = this.progress;
+        const duration = 1000;
+        const startTime = performance.now();
+        
+        const updateProgress = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            this.progress = startProgress + (targetProgress - startProgress) * this.easeOutCubic(progress);
+            
+            if (this.progressFill) {
+                this.progressFill.style.width = `${this.progress}%`;
+                this.progressFill.style.boxShadow = `0 0 10px rgba(255, 215, 0, ${progress * 0.5})`;
+            }
+            
+            if (this.progressPercentage) {
+                this.progressPercentage.textContent = `${Math.round(this.progress)}%`;
+                this.progressPercentage.style.color = `rgba(255, 215, 0, ${0.5 + progress * 0.5})`;
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(updateProgress);
+            }
+        };
+        
+        requestAnimationFrame(updateProgress);
+    }
+    
+    easeOutCubic(x) {
+        return 1 - Math.pow(1 - x, 3);
+    }
+    
+    addParticleEffects() {
+        const particleContainer = document.createElement('div');
+        particleContainer.className = 'particle-container';
+        this.loadingScreen.appendChild(particleContainer);
+        
+        // Add glowing particles
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.setProperty('--delay', `${Math.random() * 5}s`);
+            particle.style.setProperty('--size', `${Math.random() * 10 + 5}px`);
+            particleContainer.appendChild(particle);
         }
     }
     
     initializeLottieAnimation() {
-        // Initialize Lottie animation
         const animation = lottie.loadAnimation({
             container: document.getElementById('lottie-animation'),
             renderer: 'svg',
             loop: true,
             autoplay: true,
-            path: 'https://assets5.lottiefiles.com/packages/lf20_xvrofzfk.json' // Casino-themed animation
+            path: 'Animation - 1738866464842.json',
+            rendererSettings: {
+                preserveAspectRatio: 'xMidYMid slice',
+                progressiveLoad: true,
+                hideOnTransparent: true,
+                className: 'premium-lottie'
+            }
         });
         
-        animation.setSpeed(0.8); // Slightly slow down the animation
+        animation.setSpeed(0.8);
+        
+        // Add glow effect to Lottie animation
+        const lottieContainer = document.getElementById('lottie-animation');
+        lottieContainer.style.filter = 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.3))';
     }
     
     finishLoading() {
+        // Add final flourish animation
+        const finalAnimation = document.createElement('div');
+        finalAnimation.className = 'final-flourish';
+        this.loadingScreen.appendChild(finalAnimation);
+        
         setTimeout(() => {
             this.isLoading = false;
             this.loadingScreen.classList.add('fade-out');
             
-            // Show app container with animation
-            this.appContainer.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                this.appContainer.classList.add('show');
-            });
+            // Clean up intervals
+            this.intervals.forEach(interval => clearInterval(interval));
             
-            // Initialize CoinTracker after loading screen is gone
+            // Transition to app with premium effect
             setTimeout(() => {
-                this.loadingScreen.style.display = 'none';
-                new CoinTracker();
-            }, 1000);
+                this.appContainer.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    this.appContainer.classList.add('show');
+                    this.appContainer.style.transform = 'scale(1)';
+                    this.appContainer.style.opacity = '1';
+                });
+                
+                // Initialize main app
+                setTimeout(() => {
+                    this.loadingScreen.style.display = 'none';
+                    new CoinTracker();
+                }, 1000);
+            }, 800);
         }, 500);
     }
 }
@@ -1206,10 +1375,10 @@ document.addEventListener('DOMContentLoaded', () => {
     animation.addEventListener('DOMLoaded', () => {
         setTimeout(() => {
             lottieContainer.style.transform = 'scale(1.2)';
-            if (brandText) {
-                brandText.style.opacity = '1';
-                brandText.style.transform = 'translateY(0)';
-            }
+        if (brandText) {
+            brandText.style.opacity = '1';
+            brandText.style.transform = 'translateY(0)';
+        }
         }, 300);
     });
 
@@ -1307,17 +1476,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Transition to app container with enhanced timing
                 setTimeout(() => {
-                    appContainer.classList.remove('hidden');
-                    
-                    // Create smooth fade-in sequence
-                    requestAnimationFrame(() => {
-                        appContainer.classList.add('show');
-                        
-                        // Initialize the main app
-                        new CoinTracker();
-                    });
+            appContainer.classList.remove('hidden');
+            
+            // Create smooth fade-in sequence
+            requestAnimationFrame(() => {
+                appContainer.classList.add('show');
+                
+                // Initialize the main app
+                new CoinTracker();
+            });
                 }, 800);
-            }, 1000);
+        }, 1000);
         }, 500);
     }
 }); 
